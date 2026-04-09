@@ -1,0 +1,1297 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/filter.css">
+<link rel="stylesheet" href="css/nouislider.min.css">
+        <link rel="stylesheet" href="css/leaflet.photon.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title>Parkeeronderzoek Wierden</title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet.photon.js"></script>
+        <script src="js/tailDT.js"></script>
+<script src="js/nouislider.min.js"></script>
+<script src="js/wNumb.js"></script>
+        <script src="data/Avondmeting_1.js"></script>
+        <script src="data/2eNachtmeting_2.js"></script>
+        <script src="data/1eNachtmeting_3.js"></script>
+        <script src="data/Ruweresultatensecties_4.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:false, maxZoom:28, minZoom:1
+        }).fitBounds([[52.34638913437035,6.5613703497779445],[52.37208172253074,6.639751455501672]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        // modify popup if contains media
+        function addClassToPopupIfMedia(content, popup) {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var imgTd = tempDiv.querySelector('td img');
+            if (imgTd) {
+                var src = imgTd.getAttribute('src');
+                if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                    var audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = src;
+                    imgTd.parentNode.replaceChild(audio, imgTd);
+                    popup._contentNode.classList.add('media');
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                    var video = document.createElement('video');
+                    video.controls = true;
+                    video.src = src;
+                    video.style.width = "400px";
+                    video.style.height = "300px";
+                    video.style.maxHeight = "60vh";
+                    video.style.maxWidth = "60vw";
+                    imgTd.parentNode.replaceChild(video, imgTd);
+                    popup._contentNode.classList.add('media');
+                    // Aggiorna il popup quando il video carica i metadati
+                    video.addEventListener('loadedmetadata', function() {
+                        popup.update();
+                    });
+                    setTimeout(function() {
+                        popup.setContent(tempDiv.innerHTML);
+                        popup.update();
+                    }, 10);
+                } else {
+                    popup._contentNode.classList.remove('media');
+                }
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        }
+        var title = new L.Control({'position':'topleft'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Parkeeronderzoek Wierden</h2>';
+        };
+        title.addTo(map);
+        var abstract = new L.Control({'position':'topleft'});
+        abstract.onAdd = function (map) {
+            this._div = L.DomUtil.create('div',
+            'leaflet-control abstract');
+            this._div.id = 'abstract'
+
+                abstract.show();
+                return this._div;
+            };
+            abstract.show = function () {
+                this._div.classList.remove("abstract");
+                this._div.classList.add("abstractUncollapsed");
+                this._div.innerHTML = 'Onderzoek parkeerdruk openbare parkeerplaatsen in rest bebouwde kom';
+        };
+        abstract.addTo(map);
+        var zoomControl = L.control.zoom({
+            position: 'topleft'
+        }).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_Positronretina_0');
+        map.getPane('pane_Positronretina_0').style.zIndex = 400;
+        var layer_Positronretina_0 = L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png', {
+            pane: 'pane_Positronretina_0',
+            opacity: 1.0,
+            attribution: '<a href="https://cartodb.com/basemaps/">Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_Positronretina_0;
+        map.addLayer(layer_Positronretina_0);
+        function pop_Avondmeting_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sectie" colspan="2"><strong>Sectie</strong><br />' + (feature.properties['Sectie'] !== null ? autolinker.link(String(feature.properties['Sectie']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Plaatsnaam" colspan="2"><strong>Plaatsnaam</strong><br />' + (feature.properties['Plaatsnaam'] !== null ? autolinker.link(String(feature.properties['Plaatsnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Straatnaam" colspan="2"><strong>Straatnaam</strong><br />' + (feature.properties['Straatnaam'] !== null ? autolinker.link(String(feature.properties['Straatnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sector" colspan="2"><strong>Sector</strong><br />' + (feature.properties['Sector'] !== null ? autolinker.link(String(feature.properties['Sector']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap" colspan="2"><strong>Capaciteit</strong><br />' + (feature.properties['Cap'] !== null ? autolinker.link(String(feature.properties['Cap']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Druk avond" colspan="2"><strong>Druk avond</strong><br />' + (feature.properties['Druk avond'] !== null ? autolinker.link(String(feature.properties['Druk avond']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Bezetting" colspan="2"><strong>Bezettingsgraad (%)</strong><br />' + (feature.properties['Bezetting'] !== null ? autolinker.link(String(feature.properties['Bezetting']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Avondmeting_1_0(feature) {
+            if (feature.properties['Bezetting'] >= 0.000000 && feature.properties['Bezetting'] <= 0.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(191,195,200,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 0.000000 && feature.properties['Bezetting'] <= 50.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(62,198,95,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 50.000000 && feature.properties['Bezetting'] <= 70.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(230,216,59,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 70.000000 && feature.properties['Bezetting'] <= 80.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(244,162,56,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 80.000000 && feature.properties['Bezetting'] <= 90.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(233,85,50,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 90.000000 && feature.properties['Bezetting'] <= 100.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(214,28,43,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 100.000000 && feature.properties['Bezetting'] <= 4600.000000 ) {
+                return {
+                pane: 'pane_Avondmeting_1',
+                opacity: 1,
+                color: 'rgba(122,28,118,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_Avondmeting_1');
+        map.getPane('pane_Avondmeting_1').style.zIndex = 401;
+        map.getPane('pane_Avondmeting_1').style['mix-blend-mode'] = 'normal';
+        var layer_Avondmeting_1 = new L.geoJson(json_Avondmeting_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Avondmeting_1',
+            layerName: 'layer_Avondmeting_1',
+            pane: 'pane_Avondmeting_1',
+            onEachFeature: pop_Avondmeting_1,
+            style: style_Avondmeting_1_0,
+        });
+        bounds_group.addLayer(layer_Avondmeting_1);
+        map.addLayer(layer_Avondmeting_1);
+        function pop_2eNachtmeting_2(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sectie" colspan="2"><strong>Sectie</strong><br />' + (feature.properties['Sectie'] !== null ? autolinker.link(String(feature.properties['Sectie']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Plaatsnaam" colspan="2"><strong>Plaatsnaam</strong><br />' + (feature.properties['Plaatsnaam'] !== null ? autolinker.link(String(feature.properties['Plaatsnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Straatnaam" colspan="2"><strong>Straatnaam</strong><br />' + (feature.properties['Straatnaam'] !== null ? autolinker.link(String(feature.properties['Straatnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sector" colspan="2"><strong>Sector</strong><br />' + (feature.properties['Sector'] !== null ? autolinker.link(String(feature.properties['Sector']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap" colspan="2"><strong>Capaciteit</strong><br />' + (feature.properties['Cap'] !== null ? autolinker.link(String(feature.properties['Cap']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Druk nacht 2" colspan="2"><strong>Druk nacht 2</strong><br />' + (feature.properties['Druk nacht 2'] !== null ? autolinker.link(String(feature.properties['Druk nacht 2']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="bezetting" colspan="2"><strong>Bezettingsgraad (%)</strong><br />' + (feature.properties['bezetting'] !== null ? autolinker.link(String(feature.properties['bezetting']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_2eNachtmeting_2_0(feature) {
+            if (feature.properties['bezetting'] >= 0.000000 && feature.properties['bezetting'] <= 0.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(191,195,200,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 0.000000 && feature.properties['bezetting'] <= 50.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(62,198,95,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 50.000000 && feature.properties['bezetting'] <= 70.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(230,216,59,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 70.000000 && feature.properties['bezetting'] <= 80.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(244,162,56,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 80.000000 && feature.properties['bezetting'] <= 90.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(233,85,50,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 90.000000 && feature.properties['bezetting'] <= 100.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(214,28,43,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['bezetting'] >= 100.000000 && feature.properties['bezetting'] <= 4600.000000 ) {
+                return {
+                pane: 'pane_2eNachtmeting_2',
+                opacity: 1,
+                color: 'rgba(122,28,118,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_2eNachtmeting_2');
+        map.getPane('pane_2eNachtmeting_2').style.zIndex = 402;
+        map.getPane('pane_2eNachtmeting_2').style['mix-blend-mode'] = 'normal';
+        var layer_2eNachtmeting_2 = new L.geoJson(json_2eNachtmeting_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_2eNachtmeting_2',
+            layerName: 'layer_2eNachtmeting_2',
+            pane: 'pane_2eNachtmeting_2',
+            onEachFeature: pop_2eNachtmeting_2,
+            style: style_2eNachtmeting_2_0,
+        });
+        bounds_group.addLayer(layer_2eNachtmeting_2);
+        map.addLayer(layer_2eNachtmeting_2);
+        function pop_1eNachtmeting_3(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sectie" colspan="2"><strong>Sectie</strong><br />' + (feature.properties['Sectie'] !== null ? autolinker.link(String(feature.properties['Sectie']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Plaatsnaam" colspan="2"><strong>Plaatsnaam</strong><br />' + (feature.properties['Plaatsnaam'] !== null ? autolinker.link(String(feature.properties['Plaatsnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Straatnaam" colspan="2"><strong>Straatnaam</strong><br />' + (feature.properties['Straatnaam'] !== null ? autolinker.link(String(feature.properties['Straatnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sector" colspan="2"><strong>Sector</strong><br />' + (feature.properties['Sector'] !== null ? autolinker.link(String(feature.properties['Sector']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap" colspan="2"><strong>Capaciteit</strong><br />' + (feature.properties['Cap'] !== null ? autolinker.link(String(feature.properties['Cap']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Druk nacht 1" colspan="2"><strong>Parkeerdruk nacht 1</strong><br />' + (feature.properties['Druk nacht 1'] !== null ? autolinker.link(String(feature.properties['Druk nacht 1']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Bezetting" colspan="2"><strong>Bezettingsgraad (%)</strong><br />' + (feature.properties['Bezetting'] !== null ? autolinker.link(String(feature.properties['Bezetting']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_1eNachtmeting_3_0(feature) {
+            if (feature.properties['Bezetting'] >= 0.000000 && feature.properties['Bezetting'] <= 0.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(191,195,200,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 0.000000 && feature.properties['Bezetting'] <= 50.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(62,198,95,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 50.000000 && feature.properties['Bezetting'] <= 70.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(230,216,59,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 70.000000 && feature.properties['Bezetting'] <= 80.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(244,162,56,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 80.000000 && feature.properties['Bezetting'] <= 90.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(233,85,50,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 90.000000 && feature.properties['Bezetting'] <= 100.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(214,28,43,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+            if (feature.properties['Bezetting'] >= 100.000000 && feature.properties['Bezetting'] <= 4600.000000 ) {
+                return {
+                pane: 'pane_1eNachtmeting_3',
+                opacity: 1,
+                color: 'rgba(122,28,118,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+            }
+        }
+        map.createPane('pane_1eNachtmeting_3');
+        map.getPane('pane_1eNachtmeting_3').style.zIndex = 403;
+        map.getPane('pane_1eNachtmeting_3').style['mix-blend-mode'] = 'normal';
+        var layer_1eNachtmeting_3 = new L.geoJson(json_1eNachtmeting_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_1eNachtmeting_3',
+            layerName: 'layer_1eNachtmeting_3',
+            pane: 'pane_1eNachtmeting_3',
+            onEachFeature: pop_1eNachtmeting_3,
+            style: style_1eNachtmeting_3_0,
+        });
+        bounds_group.addLayer(layer_1eNachtmeting_3);
+        map.addLayer(layer_1eNachtmeting_3);
+        function pop_Ruweresultatensecties_4(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sectie" colspan="2"><strong>Sectie</strong><br />' + (feature.properties['Sectie'] !== null ? autolinker.link(String(feature.properties['Sectie']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Plaatsnaam" colspan="2"><strong>Plaatsnaam</strong><br />' + (feature.properties['Plaatsnaam'] !== null ? autolinker.link(String(feature.properties['Plaatsnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Straatnaam" colspan="2"><strong>Straatnaam</strong><br />' + (feature.properties['Straatnaam'] !== null ? autolinker.link(String(feature.properties['Straatnaam']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Sector" colspan="2"><strong>Sector</strong><br />' + (feature.properties['Sector'] !== null ? autolinker.link(String(feature.properties['Sector']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_p" colspan="2"><strong>Capaciteit prive</strong><br />' + (feature.properties['Cap_p'] !== null ? autolinker.link(String(feature.properties['Cap_p']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_v" colspan="2"><strong>Capaciteit vak</strong><br />' + (feature.properties['Cap_v'] !== null ? autolinker.link(String(feature.properties['Cap_v']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_s" colspan="2"><strong>capaciteit straat</strong><br />' + (feature.properties['Cap_s'] !== null ? autolinker.link(String(feature.properties['Cap_s']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_i" colspan="2"><strong>Capaciteit invalide</strong><br />' + (feature.properties['Cap_i'] !== null ? autolinker.link(String(feature.properties['Cap_i']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_e" colspan="2"><strong>Capacititeit E-opladen</strong><br />' + (feature.properties['Cap_e'] !== null ? autolinker.link(String(feature.properties['Cap_e']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td class="visible-with-data" id="Cap_d" colspan="2"><strong>Capaciteit doelgroep</strong><br />' + (feature.properties['Cap_d'] !== null ? autolinker.link(String(feature.properties['Cap_d']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Ruweresultatensecties_4_0(feature) {
+            switch(String(feature.properties['Sector'])) {
+                case '\'t Loo':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(93,105,227,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'De Elsmaat':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(216,153,64,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'De Hooilanden':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(226,73,240,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'De Maaten':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(212,236,140,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'De Stouwe':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(237,228,128,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'De Vonder':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(45,210,30,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Enter-Noordwest':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(122,95,201,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Enter-Oost':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(76,209,151,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Enter-Zuidwest':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(93,173,200,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Hoge Hexel':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(233,37,119,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Hogelucht':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(215,24,167,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Kluinveen':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(102,222,17,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Violenhoek':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(232,134,142,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Weuste Noord':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(221,105,66,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Wierden-Oost':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(136,33,209,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Wierden-West':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(93,151,233,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                case 'Zuidbroek':
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(94,235,221,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+                default:
+                    return {
+                pane: 'pane_Ruweresultatensecties_4',
+                opacity: 1,
+                color: 'rgba(76,205,109,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 2.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Ruweresultatensecties_4');
+        map.getPane('pane_Ruweresultatensecties_4').style.zIndex = 404;
+        map.getPane('pane_Ruweresultatensecties_4').style['mix-blend-mode'] = 'normal';
+        var layer_Ruweresultatensecties_4 = new L.geoJson(json_Ruweresultatensecties_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Ruweresultatensecties_4',
+            layerName: 'layer_Ruweresultatensecties_4',
+            pane: 'pane_Ruweresultatensecties_4',
+            onEachFeature: pop_Ruweresultatensecties_4,
+            style: style_Ruweresultatensecties_4_0,
+        });
+        bounds_group.addLayer(layer_Ruweresultatensecties_4);
+        const url = {"Nominatim OSM": "https://nominatim.openstreetmap.org/search?format=geojson&addressdetails=1&",
+        "France BAN": "https://api-adresse.data.gouv.fr/search/?"}
+        var photonControl = L.control.photon({
+            url: url["Nominatim OSM"],
+            feedbackLabel: '',
+            position: 'topleft',
+            includePosition: true,
+            initial: true,
+            // resultsHandler: myHandler,
+        }).addTo(map);
+        photonControl._container.childNodes[0].style.borderRadius="10px"
+        // Create a variable to store the geoJSON data
+        var x = null;
+        // Create a variable to store the marker
+        var marker = null;
+        // Add an event listener to the Photon control to create a marker from the returned geoJSON data
+        var z = null;
+        photonControl.on('selected', function(e) {
+            console.log(photonControl.search.resultsContainer);
+            if (x != null) {
+                map.removeLayer(obj3.marker);
+                map.removeLayer(x);
+            }
+            obj2.gcd = e.choice;
+            x = L.geoJSON(obj2.gcd).addTo(map);
+            var label = typeof obj2.gcd.properties.label === 'undefined' ? obj2.gcd.properties.display_name : obj2.gcd.properties.label;
+            obj3.marker = L.marker(x.getLayers()[0].getLatLng()).bindPopup(label).addTo(map);
+            map.setView(x.getLayers()[0].getLatLng(), 17);
+            z = typeof e.choice.properties.label === 'undefined'? e.choice.properties.display_name : e.choice.properties.label;
+            console.log(e);
+            e.target.input.value = z;
+        });
+        var search = document.getElementsByClassName("leaflet-photon leaflet-control")[0];
+        search.classList.add("leaflet-control-search")
+        search.style.display = "flex";
+        search.style.backgroundColor="rgba(255,255,255,0.5)" 
+
+        // Create the new button element
+        var button = document.createElement("div");
+        button.id = "gcd-button-control";
+        button.className = "gcd-gl-btn fa fa-search search-button";
+
+        // Insert the button at the beginning of the search control
+        search.insertBefore(button, search.firstChild);
+        last = search.lastChild;
+        last.style.display = "none";
+        button.addEventListener("click", function (e) {
+            if (last.style.display === "none") {
+                last.style.display = "block";
+            } else {
+                last.style.display = "none";
+            }
+        });
+        var overlaysTree = [
+            {label: 'Ruwe resultaten secties<br /><table><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_tLoo0.png" /></td><td>\'t Loo</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_DeElsmaat1.png" /></td><td>De Elsmaat</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_DeHooilanden2.png" /></td><td>De Hooilanden</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_DeMaaten3.png" /></td><td>De Maaten</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_DeStouwe4.png" /></td><td>De Stouwe</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_DeVonder5.png" /></td><td>De Vonder</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_EnterNoordwest6.png" /></td><td>Enter-Noordwest</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_EnterOost7.png" /></td><td>Enter-Oost</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_EnterZuidwest8.png" /></td><td>Enter-Zuidwest</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_HogeHexel9.png" /></td><td>Hoge Hexel</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_Hogelucht10.png" /></td><td>Hogelucht</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_Kluinveen11.png" /></td><td>Kluinveen</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_Violenhoek12.png" /></td><td>Violenhoek</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_WeusteNoord13.png" /></td><td>Weuste Noord</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_WierdenOost14.png" /></td><td>Wierden-Oost</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_WierdenWest15.png" /></td><td>Wierden-West</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_Zuidbroek16.png" /></td><td>Zuidbroek</td></tr><tr><td style="text-align: center;"><img src="legend/Ruweresultatensecties_4_17.png" /></td><td></td></tr></table>', layer: layer_Ruweresultatensecties_4},
+            {label: '1e Nachtmeting<br /><table><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_Geenbezetting0.png" /></td><td>Geen bezetting</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_0501.png" /></td><td>0 - 50%</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_50702.png" /></td><td>50 - 70%</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_70803.png" /></td><td>70 - 80%</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_80904.png" /></td><td>80 - 90%</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_901005.png" /></td><td>90 - 100%</td></tr><tr><td style="text-align: center;"><img src="legend/1eNachtmeting_3_1006.png" /></td><td>> 100%</td></tr></table>', layer: layer_1eNachtmeting_3},
+            {label: '2e Nachtmeting<br /><table><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_Geenbezetting0.png" /></td><td>Geen bezetting</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_0501.png" /></td><td>0 - 50%</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_50702.png" /></td><td>50 - 70%</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_70803.png" /></td><td>70 - 80%</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_80904.png" /></td><td>80 - 90%</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_901005.png" /></td><td>90 - 100%</td></tr><tr><td style="text-align: center;"><img src="legend/2eNachtmeting_2_1006.png" /></td><td>> 100%</td></tr></table>', layer: layer_2eNachtmeting_2},
+            {label: 'Avondmeting<br /><table><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_Geenbezetting0.png" /></td><td>Geen bezetting</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_0501.png" /></td><td>0 - 50%</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_50702.png" /></td><td>50 - 70%</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_70803.png" /></td><td>70 - 80%</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_80904.png" /></td><td>80 - 90%</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_901005.png" /></td><td>90 - 100%</td></tr><tr><td style="text-align: center;"><img src="legend/Avondmeting_1_1006.png" /></td><td>> 100%</td></tr></table>', layer: layer_Avondmeting_1},
+            {label: "Positron (retina)", layer: layer_Positronretina_0, radioGroup: 'bm' },]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: false, 
+        });
+        lay.addTo(map);
+		document.addEventListener("DOMContentLoaded", function() {
+            // set new Layers List height which considers toggle icon
+            function newLayersListHeight() {
+                var layerScrollbarElement = document.querySelector('.leaflet-control-layers-scrollbar');
+                if (layerScrollbarElement) {
+                    var layersListElement = document.querySelector('.leaflet-control-layers-list');
+                    var originalHeight = layersListElement.style.height 
+                        || window.getComputedStyle(layersListElement).height;
+                    var newHeight = parseFloat(originalHeight) - 50;
+                    layersListElement.style.height = newHeight + 'px';
+                }
+            }
+            var isLayersListExpanded = true;
+            var controlLayersElement = document.querySelector('.leaflet-control-layers');
+            var toggleLayerControl = document.querySelector('.leaflet-control-layers-toggle');
+            // toggle Collapsed/Expanded and apply new Layers List height
+            toggleLayerControl.addEventListener('click', function() {
+                if (isLayersListExpanded) {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                } else {
+                    controlLayersElement.classList.add('leaflet-control-layers-expanded');
+                }
+                isLayersListExpanded = !isLayersListExpanded;
+                newLayersListHeight()
+            });	
+			// apply new Layers List height if toggle layerstree
+			if (controlLayersElement) {
+				controlLayersElement.addEventListener('click', function(event) {
+					var toggleLayerHeaderPointer = event.target.closest('.leaflet-layerstree-header-pointer span');
+					if (toggleLayerHeaderPointer) {
+						newLayersListHeight();
+					}
+				});
+			}
+            // Collapsed/Expanded at Start to apply new height
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            setTimeout(function() {
+                toggleLayerControl.click();
+            }, 10);
+            // Collapsed touch/small screen
+            var isSmallScreen = window.innerWidth < 650;
+            if (isSmallScreen) {
+                setTimeout(function() {
+                    controlLayersElement.classList.remove('leaflet-control-layers-expanded');
+                    isLayersListExpanded = !isLayersListExpanded;
+                }, 500);
+            }  
+        });       
+        setBounds();
+        var i = 0;
+        layer_Ruweresultatensecties_4.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((exp_label_Ruweresultatensecties_4_eval_expression(context) !== null?String('<div style="color: #323232; font-size: 8pt; font-family: \'Arial\', sans-serif;">' + exp_label_Ruweresultatensecties_4_eval_expression(context)) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Ruweresultatensecties_4'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+        var mapDiv = document.getElementById('map');
+        var row = document.createElement('div');
+        row.className="row";
+        row.id="all";
+        row.style.height = "100%";
+        var col1 = document.createElement('div');
+        col1.className="col9";
+        col1.id = "mapWindow";
+        col1.style.height = "99%";
+        col1.style.width = "80%";
+        col1.style.display = "inline-block";
+        var col2 = document.createElement('div');
+        col2.className="col3";
+        col2.id = "menu";
+        col2.style.display = "inline-block";
+        mapDiv.parentNode.insertBefore(row, mapDiv);
+        document.getElementById("all").appendChild(col1);
+        document.getElementById("all").appendChild(col2);
+        col1.appendChild(mapDiv)
+        var Filters = {"Druk nacht 1": "int","Druk avond": "int","Druk nacht 2": "int","Sector": "str"};
+        function filterFunc() {
+          map.eachLayer(function(lyr){
+          if ("options" in lyr && "dataVar" in lyr["options"]){
+            features = this[lyr["options"]["dataVar"]].features.slice(0);
+            try{
+              for (key in Filters){
+                keyS = key.replace(/[^a-zA-Z0-9_]/g, "")
+                if (Filters[key] == "str" || Filters[key] == "bool"){
+                  var selection = [];
+                  var options = document.getElementById("sel_" + keyS).options
+                  for (var i=0; i < options.length; i++) {
+                    if (options[i].selected) selection.push(options[i].value);
+                  }
+                    try{
+                      if (key in features[0].properties){
+                        for (i = features.length - 1;
+                          i >= 0; --i){
+                          if (selection.indexOf(
+                          features[i].properties[key])<0
+                          && selection.length>0) {
+                          features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                  }
+                }
+                if (Filters[key] == "int"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (parseInt(features[i].properties[key])
+                          < sliderVals[0]
+                          || parseInt(features[i].properties[key])
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "real"){
+                  sliderVals =  document.getElementById(
+                    "div_" + keyS).noUiSlider.get();
+                  try{
+                    if (key in features[0].properties){
+                    for (i = features.length - 1; i >= 0; --i){
+                      if (features[i].properties[key]
+                          < sliderVals[0]
+                          || features[i].properties[key]
+                          > sliderVals[1]){
+                            features.splice(i,1);
+                          }
+                        }
+                      }
+                    } catch(err){
+                    }
+                  }
+                if (Filters[key] == "date"
+                  || Filters[key] == "datetime"
+                  || Filters[key] == "time"){
+                  try{
+                    if (key in features[0].properties){
+                      HTMLkey = key.replace(/[&\/\\#,+()$~%.'":*?<>{} ]/g, '');
+                      startdate = document.getElementById("dat_" +
+                        HTMLkey + "_date1").value.replace(" ", "T");
+                      enddate = document.getElementById("dat_" +
+                        HTMLkey + "_date2").value.replace(" ", "T");
+                      for (i = features.length - 1; i >= 0; --i){
+                        if (features[i].properties[key] < startdate
+                          || features[i].properties[key] > enddate){
+                          features.splice(i,1);
+                        }
+                      }
+                    }
+                  } catch(err){
+                  }
+                }
+              }
+            } catch(err){
+            }
+          this[lyr["options"]["layerName"]].clearLayers();
+          this[lyr["options"]["layerName"]].addData(features);
+        var i = 0;
+        layer_Ruweresultatensecties_4.eachLayer(function(layer) {
+            var context = {
+                feature: layer.feature,
+                variables: {}
+            };
+            layer.bindTooltip((exp_label_Ruweresultatensecties_4_eval_expression(context) !== null?String('<div style="color: #323232; font-size: 8pt; font-family: \'Arial\', sans-serif;">' + exp_label_Ruweresultatensecties_4_eval_expression(context)) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Ruweresultatensecties_4'});
+            labels.push(layer);
+            totalMarkers += 1;
+              layer.added = true;
+              addLabel(layer, i);
+              i++;
+        });
+          }
+          })
+        }
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Druknacht1 = document.createElement("div");
+            div_Druknacht1.id = "div_Druknacht1";
+            div_Druknacht1.className = "slider";
+            document.getElementById("menu").appendChild(div_Druknacht1);
+            var lab_Druknacht1 = document.createElement('div');
+            lab_Druknacht1.innerHTML  = 'Druk nacht 1: <span id="val_Druknacht1"></span>';
+            lab_Druknacht1.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Druknacht1);
+            var reset_Druknacht1 = document.createElement('div');
+            reset_Druknacht1.innerHTML = 'clear filter';
+            reset_Druknacht1.className = 'filterlabel';
+            lab_Druknacht1.className = 'filterlabel';
+            reset_Druknacht1.onclick = function() {
+                sel_Druknacht1.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Druknacht1);
+            var sel_Druknacht1 = document.getElementById('div_Druknacht1');
+            noUiSlider.create(sel_Druknacht1, {
+                connect: true,
+                start: [0, 37],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 0,
+                max: 37
+                }
+            });
+            sel_Druknacht1.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Druknacht1 = document.getElementById('val_Druknacht1');
+            val_Druknacht1.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Drukavond = document.createElement("div");
+            div_Drukavond.id = "div_Drukavond";
+            div_Drukavond.className = "slider";
+            document.getElementById("menu").appendChild(div_Drukavond);
+            var lab_Drukavond = document.createElement('div');
+            lab_Drukavond.innerHTML  = 'Druk avond: <span id="val_Drukavond"></span>';
+            lab_Drukavond.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Drukavond);
+            var reset_Drukavond = document.createElement('div');
+            reset_Drukavond.innerHTML = 'clear filter';
+            reset_Drukavond.className = 'filterlabel';
+            lab_Drukavond.className = 'filterlabel';
+            reset_Drukavond.onclick = function() {
+                sel_Drukavond.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Drukavond);
+            var sel_Drukavond = document.getElementById('div_Drukavond');
+            noUiSlider.create(sel_Drukavond, {
+                connect: true,
+                start: [0, 42],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 0,
+                max: 42
+                }
+            });
+            sel_Drukavond.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Drukavond = document.getElementById('val_Drukavond');
+            val_Drukavond.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Druknacht2 = document.createElement("div");
+            div_Druknacht2.id = "div_Druknacht2";
+            div_Druknacht2.className = "slider";
+            document.getElementById("menu").appendChild(div_Druknacht2);
+            var lab_Druknacht2 = document.createElement('div');
+            lab_Druknacht2.innerHTML  = 'Druk nacht 2: <span id="val_Druknacht2"></span>';
+            lab_Druknacht2.className = 'filterlabel';
+            document.getElementById("menu").appendChild(lab_Druknacht2);
+            var reset_Druknacht2 = document.createElement('div');
+            reset_Druknacht2.innerHTML = 'clear filter';
+            reset_Druknacht2.className = 'filterlabel';
+            lab_Druknacht2.className = 'filterlabel';
+            reset_Druknacht2.onclick = function() {
+                sel_Druknacht2.noUiSlider.reset();
+            };
+            document.getElementById("menu").appendChild(reset_Druknacht2);
+            var sel_Druknacht2 = document.getElementById('div_Druknacht2');
+            noUiSlider.create(sel_Druknacht2, {
+                connect: true,
+                start: [0, 42],
+                step: 1,
+                format: wNumb({
+                    decimals: 0,
+                    }),
+                range: {
+                min: 0,
+                max: 42
+                }
+            });
+            sel_Druknacht2.noUiSlider.on('update', function (values) {
+            filterVals =[];
+            for (value in values){
+            filterVals.push(parseInt(value))
+            }
+            val_Druknacht2 = document.getElementById('val_Druknacht2');
+            val_Druknacht2.innerHTML = values.join(' - ');
+                filterFunc()
+            });
+            document.getElementById("menu").appendChild(
+                document.createElement("div"));
+            var div_Sector = document.createElement('div');
+            div_Sector.id = "div_Sector";
+            div_Sector.className= "filterselect";
+            document.getElementById("menu").appendChild(div_Sector);
+            sel_Sector = document.createElement('select');
+            sel_Sector.multiple = true;
+            sel_Sector.size = 10;
+            sel_Sector.id = "sel_Sector";
+            var Sector_options_str = "<option value='' unselected></option>";
+            sel_Sector.onchange = function(){filterFunc()};
+            Sector_options_str  += '<option value="&apos;t Loo">&apos;t Loo</option>';
+            Sector_options_str  += '<option value="De Elsmaat">De Elsmaat</option>';
+            Sector_options_str  += '<option value="De Hooilanden">De Hooilanden</option>';
+            Sector_options_str  += '<option value="De Maaten">De Maaten</option>';
+            Sector_options_str  += '<option value="De Stouwe">De Stouwe</option>';
+            Sector_options_str  += '<option value="De Vonder">De Vonder</option>';
+            Sector_options_str  += '<option value="Enter-Noordwest">Enter-Noordwest</option>';
+            Sector_options_str  += '<option value="Enter-Oost">Enter-Oost</option>';
+            Sector_options_str  += '<option value="Enter-Zuidwest">Enter-Zuidwest</option>';
+            Sector_options_str  += '<option value="Hoge Hexel">Hoge Hexel</option>';
+            Sector_options_str  += '<option value="Hogelucht">Hogelucht</option>';
+            Sector_options_str  += '<option value="Kluinveen">Kluinveen</option>';
+            Sector_options_str  += '<option value="Violenhoek">Violenhoek</option>';
+            Sector_options_str  += '<option value="Weuste Noord">Weuste Noord</option>';
+            Sector_options_str  += '<option value="Wierden-Oost">Wierden-Oost</option>';
+            Sector_options_str  += '<option value="Wierden-West">Wierden-West</option>';
+            Sector_options_str  += '<option value="Zuidbroek">Zuidbroek</option>';
+            sel_Sector.innerHTML = Sector_options_str;
+            div_Sector.appendChild(sel_Sector);
+            var lab_Sector = document.createElement('div');
+            lab_Sector.innerHTML = 'Sector';
+            lab_Sector.className = 'filterlabel';
+            div_Sector.appendChild(lab_Sector);
+            var reset_Sector = document.createElement('div');
+            reset_Sector.innerHTML = 'clear filter';
+            reset_Sector.className = 'filterlabel';
+            reset_Sector.onclick = function() {
+                var options = document.getElementById("sel_Sector").options;
+                for (var i=0; i < options.length; i++) {
+                    options[i].selected = false;
+                }
+                filterFunc();
+            };
+            div_Sector.appendChild(reset_Sector);
+        resetLabels([layer_Ruweresultatensecties_4]);
+        map.on("zoomend", function(){
+            resetLabels([layer_Ruweresultatensecties_4]);
+        });
+        map.on("layeradd", function(){
+            resetLabels([layer_Ruweresultatensecties_4]);
+        });
+        map.on("layerremove", function(){
+            resetLabels([layer_Ruweresultatensecties_4]);
+        });
+        </script>        
+    </body>
+</html>
